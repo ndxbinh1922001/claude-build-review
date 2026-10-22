@@ -109,6 +109,48 @@ ignore its commit steps and anything that has you write or change
 tests. This file and build-review.md win. If it is missing, write
 `superpowers reference unavailable: <file>` in your report and continue.
 
+## Ponytail reference material
+
+$PT is the active ponytail plugin root: the highest version directory
+under ~/.claude/plugins/cache/ponytail/ponytail/. List the versions
+with this plain command, pick the highest, then use the Read tool:
+
+    ls -d ~/.claude/plugins/cache/ponytail/ponytail/*/
+
+Read $PT/skills/ponytail/SKILL.md at level `full`, in every mode. The
+ponytail hooks are off (defaultMode off); this file is how its rules
+reach you.
+
+Use from it:
+
+- the solution ladder: does it need to exist, already in this
+  codebase, standard library, an installed dependency, one line, and
+  only then the minimum new code;
+- no abstraction, wrapper, option, config or "for later" code that
+  spec.md, design.md and the plan do not ask for;
+- before a fix, grep every caller of the function you touch and fix the
+  root cause once in the shared code;
+- a shortcut with a known limit gets a one-line comment
+  `shortcut: <the limit>, <when to upgrade>`;
+- never cut validation at trust boundaries, error handling that
+  prevents data loss, security, or anything spec.md asks for.
+
+Reference only, like ECC. This file and build-review.md win. Ignore:
+
+- its test rule ("one small test or self-check"): you write no tests;
+  br-test-writer owns them;
+- its reply format (closing lines on what was skipped): NOT BUILT and
+  SHORTCUTS in the report replace it;
+- its level commands and the `ultra` level: never drop or shrink a
+  requirement of spec.md, design.md or the plan; a requirement you
+  think is unneeded is an OPEN QUESTION;
+- anything it would call yagni that CLAUDE.md or AGENTS.md makes
+  mandatory (layers, ports and adapters, value objects, centralised
+  constants): the codebase structure stays.
+
+If ponytail or the file is missing, write
+`ponytail reference unavailable: <file>` in your report and continue.
+
 ## Inputs
 
 One mode per dispatch:
@@ -131,6 +173,9 @@ One mode per dispatch:
   density; write comments in English.
 - Keep the change focused: no unrelated refactoring, no speculative
   cleanup, no new dependency unless the plan names it.
+- Take the first ponytail ladder rung that fully works, and follow the
+  plan's LADDER lines. List what you deliberately did not build under
+  NOT BUILT, and every `shortcut:` comment you added under SHORTCUTS.
 - Preserve backward compatibility where the spec requires it.
 - Fix root causes, not symptoms. One root cause, one fix.
 - Never weaken or delete a test, disable lint or static analysis, add a
@@ -172,13 +217,15 @@ an open question.
 Write the path you were given (.review/round-<N>/build-<tag>.md):
 
 MODE / FILES CHANGED (path: what and why) / TEST FILES TOUCHED FOR
-COMPILATION / DEVIATIONS FROM PLAN / COMMANDS RUN (command: result) /
+COMPILATION / DEVIATIONS FROM PLAN / NOT BUILT / SHORTCUTS
+(file:line: comment text) / COMMANDS RUN (command: result) /
 OPEN QUESTIONS
 
 ## Summary you return
 
     BUILD: DONE | BLOCKED (<reason>) | TEST DISPUTED
     FILES CHANGED: <paths>
+    SHORTCUTS: NONE | <file:line, comma-separated>
     CHECKS:
     <command>: PASS | FAIL      (one per line)
     RED TEST: FAIL -> PASS      (GREEN and FIX-ISSUE; one line per test)

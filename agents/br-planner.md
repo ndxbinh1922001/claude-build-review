@@ -103,6 +103,46 @@ location, worktree setup and execution handoff. This file and
 build-review.md win. If it is missing, write
 `superpowers reference unavailable: <file>` in your report and continue.
 
+## Ponytail reference material
+
+$PT is the active ponytail plugin root: the highest version directory
+under ~/.claude/plugins/cache/ponytail/ponytail/. List the versions
+with this plain command, pick the highest, then use the Read tool:
+
+    ls -d ~/.claude/plugins/cache/ponytail/ponytail/*/
+
+Read $PT/skills/ponytail/SKILL.md at level `full`. The ponytail hooks
+are off (defaultMode off); this file is how its rules reach you.
+
+Use from it:
+
+- the solution ladder: does it need to exist, already in this
+  codebase, standard library, an installed dependency, one line, and
+  only then the minimum new code;
+- no abstraction, wrapper, option, config or "for later" code that
+  spec.md and design.md do not ask for; no new dependency for a few
+  lines;
+- for a bug, every caller of the function to change, and one root-cause
+  fix in the shared code;
+- never cut validation at trust boundaries, error handling that
+  prevents data loss, security, or anything spec.md asks for.
+
+Reference only, like ECC. This file and build-review.md win. Ignore:
+
+- its test rule ("one small test or self-check"): the RED tests and
+  REVIEW FOCUS of this file decide the tests;
+- its reply format (closing lines on what was skipped): NOT BUILT in
+  the report replaces it;
+- its level commands and the `ultra` level: never drop or shrink a
+  requirement of spec.md or design.md; a requirement you think is
+  unneeded is an OPEN QUESTION for the user;
+- anything it would call yagni that CLAUDE.md or AGENTS.md makes
+  mandatory (layers, ports and adapters, value objects, centralised
+  constants): the codebase structure stays.
+
+If ponytail or the file is missing, write
+`ponytail reference unavailable: <file>` in your report and continue.
+
 ## Inputs
 
 - mode: LIGHT (tier small) or FULL (tier standard or large)
@@ -118,7 +158,10 @@ build-review.md win. If it is missing, write
 1. Locate the code the request touches: modules, packages, entry
    points, execution flows. Cite file:line.
 2. Find similar implementations and helpers to reuse. Prefer extending
-   what exists over new code.
+   what exists over new code. Walk the ponytail ladder for every new
+   type, function or file the change seems to need. Options, features
+   or flexibility that spec.md and design.md do not ask for go under
+   NOT BUILT, one line each; never a requirement.
 3. FULL mode: walk the checklist below. Keep only the items that apply,
    each with one concrete note about this change.
 4. Split the work into TASKS. A task is the smallest change that
@@ -134,6 +177,9 @@ build-review.md win. If it is missing, write
    - GREEN: the signatures to implement and where. One line on the
      approach only when the tests leave a real choice; no function body
      unless the signature and tests do not determine the algorithm.
+   - LADDER: one line per new type, function or file:
+     `rung <n>: <existing helper path | stdlib package | installed
+     dependency | new code, because ...>`
    - DONE: the command that must pass
    No commit step.
 5. Write GLOBAL CONSTRAINTS (project-wide rules from spec.md,
@@ -180,9 +226,9 @@ idempotency.
 Write .review/round-1/plan.md, or the path you were given, with these
 sections:
 
-PLAN MODE / TIER CHECK / AFFECTED CODE / REUSE / CHECKLIST /
-GLOBAL CONSTRAINTS / REVIEW FOCUS / TASKS / VALIDATION COMMANDS /
-SELF-REVIEW / OPEN QUESTIONS
+PLAN MODE / TIER CHECK / AFFECTED CODE / REUSE / NOT BUILT /
+CHECKLIST / GLOBAL CONSTRAINTS / REVIEW FOCUS / TASKS /
+VALIDATION COMMANDS / SELF-REVIEW / OPEN QUESTIONS
 
 ## Summary you return
 
@@ -190,6 +236,7 @@ SELF-REVIEW / OPEN QUESTIONS
     TIER CHECK: agrees | higher: <tier> (<signal>)
     TASKS: <n>: <task titles, comma-separated>
     REVIEW FOCUS: <n>
+    NOT BUILT: NONE | <one per line>
     FILES TO CHANGE: <n>: <paths, comma-separated>
     VALIDATION COMMANDS:
     <one command per line>
