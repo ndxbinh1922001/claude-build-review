@@ -24,6 +24,14 @@ verification-before-completion (FINAL REPORT). Its execution skills
 finishing-a-development-branch) are not used: this workflow executes,
 reviews and finishes. This file wins on any conflict. Nothing commits.
 
+The ponytail plugin (ponytail@ponytail) supplies the lean-code rules
+as reference knowledge only: br-planner and br-builder read its
+solution ladder, and br-review-lean reads its ponytail-review
+checklist. Its hooks stay off (`"defaultMode": "off"` in
+~/.config/ponytail/config.json), so it reaches no other agent and not
+the coordinator. Lean findings are advisory (PHASE 9). This file and
+the br-* contracts win on any conflict.
+
 Use Orca /orchestration when independent Orca reviewers are selected.
 Select reviewers from the risk of the change, not from a fixed roster.
 The coordinator records why each reviewer was selected or omitted.
@@ -65,7 +73,7 @@ ARCHITECTURE
         |          |          |          |          |
         v          v          v          v          v
       CODEX       AGY    br-review-go  br-review-  br-review-
-    Reviewer   if high risk             reliability security / data
+    Reviewer   if high risk             reliability security / data / lean
       (Orca)     (Orca)  \_________ OCR specialists _________/
         |          |          |          |          |
         +----------+----------+----------+----------+
@@ -132,6 +140,7 @@ CLAUDE SUBAGENTS (~/.claude/agents/):
 | br-review-reliability | 5 (OCR)     | .review/ only (+ /tmp copies)   |
 | br-review-security    | 5 (OCR)     | .review/ only (+ /tmp copies)   |
 | br-review-data        | 5 (OCR)     | .review/ only (+ /tmp copies)   |
+| br-review-lean        | 5 (OCR)     | .review/ only (+ /tmp copies)   |
 | br-verifier           | 9           | .review/ only (+ /tmp copies)   |
 
 Only br-builder may intentionally modify production code.
@@ -438,6 +447,7 @@ Report layout:
   claude-<area>.md        br-review-<area>
   verify-<cluster>.md     br-verifier
   issues.md               coordinator: consolidated issues table
+                          + LEAN ADVISORIES table
 
 Before each review fan-out, run:
 
@@ -535,8 +545,10 @@ When dispatched, br-planner returns in .review/round-1/plan.md:
 
 Ask the user the open questions before Phase 2.
 
-standard / large tier: show the user the TASKS titles, REVIEW FOCUS and
-any open question, and wait for approval of the plan before Phase 2.
+standard / large tier: show the user the TASKS titles, REVIEW FOCUS,
+NOT BUILT and any open question, and wait for approval of the plan
+before Phase 2. NOT BUILT lists what the ponytail ladder left out; the
+user may move any line back into scope.
 
 Use the validation command list from the plan for every br-validator
 dispatch.
@@ -813,6 +825,12 @@ area:
 | br-review-reliability | retry, concurrency, Temporal, or lifecycle changed | OCR-REL-NN  |
 | br-review-security    | the diff touches a SECURITY TRIGGER                | OCR-SEC-NN  |
 | br-review-data        | models, repositories, queries, migrations or config structs/tags changed | OCR-DATA-NN |
+| br-review-lean        | size tier standard or large (by SIZE, not risk)    | OCR-LEAN-NN |
+
+br-review-lean classes each lean finding ADVISORY or RULE-VIOLATION
+(breaks an explicit CLAUDE.md or AGENTS.md rule). It returns FAIL only
+for a RULE-VIOLATION or an out-of-area Critical/High finding, so
+ADVISORY findings never change the OCR VERDICT.
 
 A specialist that does not run is reported as:
 
@@ -1146,6 +1164,7 @@ OCR-GO           RUNNING | N/A (<reason>)
 OCR-REL          RUNNING | N/A (<reason>)
 OCR-SEC          RUNNING | N/A (<reason>)
 OCR-DATA         RUNNING | N/A (<reason>)
+OCR-LEAN         RUNNING | N/A (<reason>)
 
 
 Do NOT invent unavailable identifiers.
@@ -1292,6 +1311,24 @@ DUPLICATE
 
 NEEDS_INVESTIGATION (verifier evidence was inconclusive: dispatch a
 fresh br-verifier with the open question, or ask the user)
+
+LEAN ADVISORY (an OCR-LEAN finding of class ADVISORY: no br-verifier,
+no PHASE 10 fix, no fix cycle spent, never blocks FINAL PASS)
+
+
+LEAN ADVISORY handling:
+
+- The coordinator checks only that the cited evidence exists (the
+  helper path, the duplicate, the unused symbol). Evidence missing:
+  INVALID.
+- Record it in a LEAN ADVISORIES table in issues.md: ID, kind, file:line,
+  smaller fix, lines saved.
+- If it shares a root cause with a VALID issue from any reviewer, mark
+  it DUPLICATE of that issue; the fix then covers it.
+- An OCR-LEAN finding of class RULE-VIOLATION is an ordinary finding:
+  cluster, verify and fix it like any other.
+- The user decides after the FINAL REPORT which advisories to apply,
+  in a new cycle they request.
 
 
 Do NOT use majority voting.
@@ -1441,7 +1478,8 @@ PHASE 10 — FIX (br-test-writer, then br-builder)
 
 Only br-builder intentionally modifies production code.
 
-Group VALID findings by root cause. Handle each independent root-cause
+Group VALID findings by root cause; LEAN ADVISORY findings are not
+fixed here. Handle each independent root-cause
 group in priority order (highest severity and dependencies first).
 Create one fix brief and the minimum meaningful regression tests for
 each group. Multiple reports of one root cause are one fix, not one
@@ -1532,7 +1570,9 @@ since the last snapshot, the affected execution flow, and the status
 of prior confirmed issues. Select a specialist only if the delta
 touches its trigger. For high review tier, CODEX and ANTIGRAVITY run
 fresh independent full reviews, with selected specialists. Start all
-selected reviewers in one fan-out.
+selected reviewers in one fan-out. br-review-lean runs again only when
+the delta itself classifies as standard or large, or to confirm a
+RULE-VIOLATION fix; otherwise OCR-LEAN: N/A (small delta).
 
 
 Required topology:
@@ -1610,6 +1650,9 @@ selected gates:
 - ANTIGRAVITY VERDICT: PASS when high review tier; otherwise N/A
 - OCR VERDICT: PASS when specialists were selected; otherwise N/A
 - no unresolved valid finding or changed snapshot
+
+LEAN ADVISORY findings never block FINAL PASS; they appear in the
+FINAL REPORT for the user to decide.
 
 N/A means the gate was deliberately omitted under the recorded risk
 policy. A selected reviewer that failed to start or finish is UNKNOWN,
@@ -1930,6 +1973,7 @@ OCR-GO     PASS | FAIL | N/A (<reason>)
 OCR-REL    PASS | FAIL | N/A (<reason>)
 OCR-SEC    PASS | FAIL | N/A (<reason>)
 OCR-DATA   PASS | FAIL | N/A (<reason>)
+OCR-LEAN   PASS | FAIL | N/A (<reason>)
 
 Findings:
 
@@ -2030,6 +2074,26 @@ Reason:
 Evidence:
 
 <evidence>
+
+
+----------------------------------------------------------------------
+LEAN ADVISORIES
+----------------------------------------------------------------------
+
+<OCR-LEAN ADVISORY findings from issues.md: ID | kind | file:line |
+smaller fix | lines saved, or NONE / N/A (<reason>)>
+
+Lean: -<N> lines possible
+
+Not applied. The user picks which to apply in a new cycle.
+
+
+----------------------------------------------------------------------
+SHORTCUTS
+----------------------------------------------------------------------
+
+<every `shortcut:` comment br-builder added, from the SHORTCUTS of the
+build-*.md reports: file:line: text, or NONE>
 
 
 ----------------------------------------------------------------------

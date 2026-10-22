@@ -20,6 +20,9 @@ Copies the build-review workflow into ${CLAUDE_CONFIG_DIR:-~/.claude}:
   workflows/build-review.md, workflows/build-review-snapshot.py
   reviewers/*.md
 
+and creates ${XDG_CONFIG_HOME:-~/.config}/ponytail/config.json with
+"defaultMode": "off" when it is missing (ponytail stays reference-only).
+
 Options:
   --with-rule   also install rules/dev-workflow.md (routing rule, applies to every project)
   --dry-run     print what would change and change nothing
@@ -90,6 +93,7 @@ check_prereqs() {
   warn_cmd ocr "OpenCodeReview: npm i -g @alibaba-group/open-code-review"
   warn_plugin superpowers@claude-plugins-official "PHASE 0 intake and test-first discipline"
   warn_plugin ecc@ecc "reference checklists for the br-* agents"
+  warn_plugin ponytail@ponytail "lean rules for br-planner, br-builder and br-review-lean"
   warn_skill orchestration "Orca multi-agent coordination"
   warn_skill orca-cli "Orca terminal and worktree control"
 }
@@ -117,6 +121,24 @@ install_files() {
   echo "added $added, updated $updated, unchanged $unchanged in $TARGET"
 }
 
+# ponytail's hooks would inject its persona into the coordinator and every
+# subagent; the workflow reads its SKILL.md files explicitly instead.
+ensure_ponytail_off() {
+  local cfg="${XDG_CONFIG_HOME:-$HOME/.config}/ponytail/config.json"
+  if [ -n "${PONYTAIL_DEFAULT_MODE-}" ] && [ "$PONYTAIL_DEFAULT_MODE" != off ]; then
+    warn "PONYTAIL_DEFAULT_MODE=$PONYTAIL_DEFAULT_MODE overrides $cfg: ponytail hooks stay on"
+  fi
+  if [ ! -e "$cfg" ]; then
+    echo "add     $cfg (defaultMode off)"
+    run mkdir -p "$(dirname "$cfg")"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      printf '{"defaultMode": "off"}\n' > "$cfg"
+    fi
+  elif ! grep -Eq '"defaultMode"[[:space:]]*:[[:space:]]*"off"' "$cfg"; then
+    warn "$cfg does not set \"defaultMode\": \"off\": ponytail hooks will steer every session and subagent"
+  fi
+}
+
 uninstall_files() {
   local rel removed=0
   while IFS= read -r rel; do
@@ -138,5 +160,6 @@ fi
 
 check_prereqs
 install_files
+ensure_ponytail_off
 [ "$WARNINGS" -gt 0 ] && echo "$WARNINGS prerequisite warning(s): the workflow degrades or stops at the phases above until they are installed."
 echo "Open a NEW Claude Code session so it loads the br-* agents."
